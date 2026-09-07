@@ -24,24 +24,21 @@ export async function createOrderHandler(req: Request, res: Response) {
   }
 }
 
-export async function getOrdersHandler(
-  req: AuthenticatedRequest,
-  res: Response
-) {
+export const getOrdersHandler = async (req: AuthenticatedRequest, res: Response) => {
   try {
-    const restaurantId = req.user?.restaurantId;
-    const status = req.query.status as OrderStatus | undefined;
+    // Extract restaurantId from authenticated JWT user payload
+    const restaurantId = req.user?.restaurantId || (req.query.restaurantId as string);
 
     if (!restaurantId) {
-      return res.status(400).json({ message: "Restaurant ID is required" });
+      return res.status(400).json({ message: "restaurantId is required" });
     }
 
-    const orders = await getRestaurantOrders(restaurantId, status);
+    const orders = await getRestaurantOrders(restaurantId);
     return res.status(200).json(orders);
   } catch (error: any) {
-    return res.status(500).json({ message: error.message });
+    return res.status(500).json({ message: "Failed to fetch orders", error: error.message });
   }
-}
+};
 
 export async function updateOrderStatusHandler(
   req: AuthenticatedRequest,
@@ -52,7 +49,11 @@ export async function updateOrderStatusHandler(
     const { id } = req.params as { id: string };
     const { status } = req.body;
 
-    if (!restaurantId || !id || !status) {
+    if (!restaurantId) {
+      return res.status(403).json({ message: "Forbidden: User has no restaurant assigned" });
+    }
+
+    if (!id || !status) {
       return res.status(400).json({
         message: "Order ID and new status are required",
       });

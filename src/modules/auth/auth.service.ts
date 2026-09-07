@@ -1,6 +1,7 @@
 import { PrismaClient } from "@prisma/client";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
+import { RegisterRequestBody } from "./auth.types.js";
 
 const prisma = new PrismaClient();
 
@@ -49,5 +50,35 @@ export async function loginStaff(email: string, passwordInput: string) {
       role: staff.role,
       restaurantId: staff.restaurantId,
     },
+  };
+}
+
+export async function registerStaff(body: RegisterRequestBody) {
+  const { email, password, role, restaurantId } = body;
+
+  const existing = await prisma.staff.findFirst({
+    where: { email },
+  });
+
+  if (existing) {
+    throw new Error("Staff email already exists");
+  }
+
+  const passwordHash = await hashPassword(password);
+
+  const staff = await prisma.staff.create({
+    data: {
+      email,
+      passwordHash,
+      role,
+      restaurantId,
+    },
+  });
+
+  return {
+    id: staff.id,
+    email: staff.email,
+    role: staff.role,
+    restaurantId: staff.restaurantId,
   };
 }

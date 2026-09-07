@@ -1,8 +1,9 @@
 import { Router } from "express";
-import { loginHandler } from "./auth.controller.js"; // .js extension required for NodeNext
+import { loginHandler, registerHandler } from "./auth.controller.js";
 
 const router = Router();
 
 router.post("/login", loginHandler);
+router.post("/register", registerHandler);
 
 export default router;

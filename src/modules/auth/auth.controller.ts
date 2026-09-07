@@ -1,6 +1,6 @@
 import { Request, Response } from "express";
-import { loginStaff } from "./auth.service.js"; // .js extension required for NodeNext
-import { LoginRequestBody } from "./auth.types.js";
+import { loginStaff, registerStaff } from "./auth.service.js";
+import { LoginRequestBody, RegisterRequestBody } from "./auth.types.js";
 
 export async function loginHandler(
   req: Request<{}, {}, LoginRequestBody>,
@@ -20,6 +20,31 @@ export async function loginHandler(
   } catch (error: any) {
     return res.status(401).json({
       message: error.message || "Authentication failed",
+    });
+  }
+}
+
+export async function registerHandler(
+  req: Request<{}, {}, RegisterRequestBody>,
+  res: Response
+) {
+  try {
+    const { email, password, role, restaurantId } = req.body;
+
+    if (!email || !password || !restaurantId) {
+      return res.status(400).json({
+        message: "Email, password, and restaurantId are required",
+      });
+    }
+
+    const staff = await registerStaff(req.body);
+    return res.status(201).json({
+      message: "Staff created successfully",
+      staff,
+    });
+  } catch (error: any) {
+    return res.status(400).json({
+      message: error.message || "Registration failed",
     });
   }
 }

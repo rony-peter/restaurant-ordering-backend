@@ -16,3 +16,10 @@ export interface LoginResponseData {
   token: string;
   staff: AuthUserPayload;
 }
+
+export interface RegisterRequestBody {
+  email: string;
+  password: string;
+  role: StaffRole;
+  restaurantId: string;
+}

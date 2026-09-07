@@ -8,17 +8,17 @@ import {
 
 const router = Router();
 
-// Public route: Customer places order from QR interface
+// Public route: Customer places order from QR mobile PWA
 router.post("/", createOrderHandler);
 
-// Staff route: Fetch active orders (Kitchen Display / Manager)
+// Protected Staff route: Fetch active orders for Web Portal (KDS/Manager/Admin)
 router.get(
   "/",
   authorizeRoles(["MANAGER", "ADMIN", "COOK"]),
   getOrdersHandler
 );
 
-// Staff route: Advance order status
+// Protected Staff route: Advance order status from Web Portal
 router.patch(
   "/:id/status",
   authorizeRoles(["MANAGER", "ADMIN", "COOK"]),

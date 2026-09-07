@@ -3,13 +3,13 @@ import { randomBytes } from "crypto";
 
 const prisma = new PrismaClient();
 
-export async function createTable(restaurantId: string, tableNumber: string) {
+export async function createTable(restaurantId: string, tableNumber: string | number) {
   const qrCodeToken = randomBytes(16).toString("hex");
 
   return prisma.table.create({
     data: {
       restaurantId,
-      tableNumber,
+      tableNumber: String(tableNumber), // Ensures tableNumber is always stored as a String
       qrCodeToken,
     },
   });
@@ -37,4 +37,23 @@ export async function getTableByQRToken(qrCodeToken: string) {
   }
 
   return table;
+}
+
+export async function deleteTable(id: string, restaurantId: string) {
+  // Check if table exists and belongs to the specified restaurant
+  const table = await prisma.table.findFirst({
+    where: {
+      id,
+      restaurantId,
+    },
+  });
+
+  if (!table) {
+    throw new Error("Table not found");
+  }
+
+  // Delete table (associated orders will cascade delete via Prisma schema)
+  return prisma.table.delete({
+    where: { id },
+  });
 }

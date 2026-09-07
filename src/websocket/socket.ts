@@ -25,7 +25,7 @@ export function initSocket(server: HTTPServer): Server {
       (socket.handshake.query?.token as string);
 
     if (!token) {
-      // Allow unauthenticated customer sockets to connect if needed (or reject)
+      // Unauthenticated customer connections are permitted
       return next();
     }
 
@@ -34,7 +34,7 @@ export function initSocket(server: HTTPServer): Server {
       const decoded = jwt.verify(token, secret) as TokenPayload;
       socket.data.user = decoded;
 
-      // Join room isolated by restaurant ID
+      // Automatically join staff sockets to their restaurant room
       if (decoded.restaurantId) {
         socket.join(`restaurant_${decoded.restaurantId}`);
       }
@@ -48,9 +48,14 @@ export function initSocket(server: HTTPServer): Server {
   io.on("connection", (socket: Socket) => {
     console.log(`Socket connected: ${socket.id}`);
 
-    // Allow customer sockets to manually join a restaurant channel
+    // Allow staff sockets to manually join kitchen channels if needed
     socket.on("join:restaurant", (restaurantId: string) => {
       socket.join(`restaurant_${restaurantId}`);
+    });
+
+    // Customer sockets join room for tracking a specific order
+    socket.on("joinOrderRoom", (orderId: string) => {
+      socket.join(`order_${orderId}`);
     });
 
     socket.on("disconnect", () => {
