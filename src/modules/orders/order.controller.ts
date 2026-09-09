@@ -11,7 +11,15 @@ import {
 
 export async function createOrderHandler(req: Request, res: Response) {
   try {
-    const { restaurantId, tableId, items, notes, paymentMethod } = req.body;
+    const {
+      restaurantId,
+      tableId,
+      items,
+      notes,
+      paymentMethod,
+      customerName,
+      customerPhone,
+    } = req.body;
 
     if (!restaurantId || !tableId || !Array.isArray(items) || items.length === 0) {
       return res.status(400).json({
@@ -27,7 +35,9 @@ export async function createOrderHandler(req: Request, res: Response) {
       tableId,
       items,
       notes,
-      validPaymentMethod
+      validPaymentMethod,
+      customerName,
+      customerPhone
     );
 
     return res.status(201).json(order);

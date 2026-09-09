@@ -4,6 +4,8 @@ import {
   loginHandler,
   registerAdminHandler,
   registerStaffHandler,
+  getStaffHandler,
+  deleteStaffHandler,
 } from "./auth.controller.js";
 
 const router = Router();
@@ -12,11 +14,23 @@ const router = Router();
 router.post("/login", loginHandler);
 router.post("/register-admin", registerAdminHandler);
 
-// Protected: Only logged-in ADMIN can create staff for their restaurant
+// Protected routes: Fetch, create, and delete staff
+router.get(
+  "/staff",
+  authorizeRoles(["ADMIN", "MANAGER"]),
+  getStaffHandler
+);
+
 router.post(
   "/register-staff",
   authorizeRoles(["ADMIN"]),
   registerStaffHandler
+);
+
+router.delete(
+  "/staff/:id",
+  authorizeRoles(["ADMIN"]),
+  deleteStaffHandler
 );
 
 export default router;

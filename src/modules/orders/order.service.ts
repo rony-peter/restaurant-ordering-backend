@@ -22,7 +22,9 @@ export async function createOrder(
   tableId: string,
   items: CreateOrderItemInput[],
   notes?: string,
-  paymentMethod: PaymentMethodType = "PAY_AT_TABLE"
+  paymentMethod: PaymentMethodType = "PAY_AT_TABLE",
+  customerName?: string,
+  customerPhone?: string
 ) {
   // Validate Table
   const table = await prisma.table.findFirst({
@@ -67,6 +69,8 @@ export async function createOrder(
       data: {
         restaurantId,
         tableId,
+        customerName: customerName ?? null,
+        customerPhone: customerPhone ?? null,
         notes: notes ?? null,
         status: OrderStatus.PLACED,
         items: {
@@ -241,6 +245,8 @@ export async function getOrderReceipt(orderId: string, restaurantId: string) {
     gstin: settings.gstin || "N/A",
     orderId: order.id,
     tableNumber: order.table.tableNumber,
+    customerName: (order as any).customerName ?? null,
+    customerPhone: (order as any).customerPhone ?? null,
     date: order.createdAt,
     status: order.status,
     notes: (order as any).notes ?? null,
