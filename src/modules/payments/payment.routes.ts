@@ -1,15 +1,15 @@
 import { Router } from "express";
 import {
-  createPaymentIntentHandler,
-  stripeWebhookHandler,
+  createPaymentOrderHandler,
+  razorpayWebhookHandler,
 } from "./payment.controller.js";
 
 const router = Router();
 
-// Public route: Create payment intent for customer checkout
-router.post("/checkout", createPaymentIntentHandler);
+// Public route: Create payment order for customer checkout
+router.post("/checkout", createPaymentOrderHandler);
 
-// Webhook endpoint for Stripe callbacks
-router.post("/webhook", stripeWebhookHandler);
+// Webhook endpoint for Razorpay callbacks
+router.post("/webhook", razorpayWebhookHandler);
 
 export default router;

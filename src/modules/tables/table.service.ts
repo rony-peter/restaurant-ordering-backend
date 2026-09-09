@@ -9,7 +9,7 @@ export async function createTable(restaurantId: string, tableNumber: string | nu
   return prisma.table.create({
     data: {
       restaurantId,
-      tableNumber: String(tableNumber), // Ensures tableNumber is always stored as a String
+      tableNumber: String(tableNumber), // Ensures tableNumber is stored as String
       qrCodeToken,
     },
   });
@@ -40,7 +40,7 @@ export async function getTableByQRToken(qrCodeToken: string) {
 }
 
 export async function deleteTable(id: string, restaurantId: string) {
-  // Check if table exists and belongs to the specified restaurant
+  // Verify table exists and belongs to the specified restaurant
   const table = await prisma.table.findFirst({
     where: {
       id,
@@ -52,7 +52,7 @@ export async function deleteTable(id: string, restaurantId: string) {
     throw new Error("Table not found");
   }
 
-  // Delete table (associated orders will cascade delete via Prisma schema)
+  // Delete table (associated orders cascade delete via Prisma schema)
   return prisma.table.delete({
     where: { id },
   });

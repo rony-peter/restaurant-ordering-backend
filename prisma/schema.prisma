@@ -19,13 +19,21 @@ enum OrderStatus {
   READY
   SERVED
   PAID
+  COMPLETED
+  CANCELLED
 }
 
 enum PaymentStatus {
+  INITIATED
   PENDING
   COMPLETED
   FAILED
   REFUNDED
+}
+
+enum PaymentMethod {
+  PAY_AT_TABLE
+  ONLINE
 }
 
 enum StaffRole {
@@ -35,9 +43,9 @@ enum StaffRole {
 }
 
 model Restaurant {
-  id       String @id @default(uuid())
+  id       String    @id @default(uuid())
   name     String
-  settings Json?
+  settings Json?     // e.g., { "address": "123 Main St", "taxRate": 0.05, "currency": "INR", "phone": "+91..." }
 
   tables    Table[]
   menuItems MenuItem[]
@@ -80,7 +88,6 @@ model MenuItem {
   dietaryTags  String[]
 
   restaurant Restaurant @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
-
   orderItems OrderItem[]
 
   createdAt DateTime @default(now())
@@ -92,33 +99,34 @@ model MenuItem {
 }
 
 model Order {
-  id        String      @id @default(uuid())
-  tableId   String
-  status    OrderStatus @default(PLACED)
-  createdAt DateTime    @default(now())
-  updatedAt DateTime    @updatedAt
+  id           String      @id @default(uuid())
+  tableId      String
+  restaurantId String
+  notes        String?
+  status       OrderStatus @default(PLACED)
 
-  table Table @relation(fields: [tableId], references: [id], onDelete: Cascade)
+  table      Table       @relation(fields: [tableId], references: [id], onDelete: Cascade)
+  restaurant Restaurant  @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+  items      OrderItem[]
+  payments   Payment[]
 
-  items        OrderItem[]
-  payments     Payment[]
-  restaurant   Restaurant? @relation(fields: [restaurantId], references: [id])
-  restaurantId String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@index([tableId])
+  @@index([restaurantId])
   @@index([tableId, status])
   @@map("orders")
 }
 
 model OrderItem {
-  id         String  @id @default(uuid())
+  id         String   @id @default(uuid())
   orderId    String
   menuItemId String
   quantity   Int
   notes      String?
 
-  order Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
-
+  order    Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
   menuItem MenuItem @relation(fields: [menuItemId], references: [id], onDelete: Restrict)
 
   @@index([orderId])
@@ -130,6 +138,7 @@ model Payment {
   id         String        @id @default(uuid())
   orderId    String
   amount     Decimal       @db.Decimal(10, 2)
+  method     PaymentMethod @default(PAY_AT_TABLE)
   status     PaymentStatus @default(PENDING)
   gatewayRef String?
 

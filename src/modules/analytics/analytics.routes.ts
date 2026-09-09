@@ -7,16 +7,16 @@ import {
 
 const router = Router();
 
-// Manager/Admin only routes for Dashboard Metrics
+// Admin routes for Dashboard Metrics
 router.get(
   "/overview",
-  authorizeRoles(["MANAGER", "ADMIN"]),
+  authorizeRoles(["ADMIN"]),
   getOverviewHandler
 );
 
 router.get(
   "/top-items",
-  authorizeRoles(["MANAGER", "ADMIN"]),
+  authorizeRoles(["ADMIN"]),
   getTopItemsHandler
 );
 

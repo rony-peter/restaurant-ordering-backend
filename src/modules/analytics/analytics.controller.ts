@@ -13,7 +13,7 @@ export async function getOverviewHandler(
     const restaurantId = req.user?.restaurantId;
 
     if (!restaurantId) {
-      return res.status(400).json({ message: "Restaurant ID missing" });
+      return res.status(400).json({ message: "Restaurant ID is required" });
     }
 
     const overview = await getDashboardOverview(restaurantId);
@@ -32,7 +32,7 @@ export async function getTopItemsHandler(
     const limit = req.query.limit ? Number(req.query.limit) : 5;
 
     if (!restaurantId) {
-      return res.status(400).json({ message: "Restaurant ID missing" });
+      return res.status(400).json({ message: "Restaurant ID is required" });
     }
 
     const topItems = await getTopSellingItems(restaurantId, limit);

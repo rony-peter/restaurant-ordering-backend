@@ -12,14 +12,14 @@ export interface AuthUserPayload {
   restaurantId: string;
 }
 
-export interface LoginResponseData {
-  token: string;
-  staff: AuthUserPayload;
+export interface RegisterAdminRequestBody {
+  restaurantName: string;
+  email: string;
+  password: string;
 }
 
-export interface RegisterRequestBody {
+export interface RegisterStaffRequestBody {
   email: string;
   password: string;
   role: StaffRole;
-  restaurantId: string;
 }

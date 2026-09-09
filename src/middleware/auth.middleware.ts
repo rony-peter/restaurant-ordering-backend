@@ -20,11 +20,18 @@ export function authorizeRoles(allowedRoles: string[]) {
 
     const token = authHeader.split(" ")[1];
 
+    if (!token) {
+      return res.status(401).json({ message: "Unauthorized: Malformed token" });
+    }
+
+    const jwtSecret = process.env.JWT_SECRET;
+
+    if (!jwtSecret) {
+      return res.status(500).json({ message: "Server misconfiguration: Missing JWT secret" });
+    }
+
     try {
-      const decoded = jwt.verify(
-        token!,
-        process.env.JWT_SECRET || "fallback_secret"
-      ) as AuthenticatedRequest["user"];
+      const decoded = jwt.verify(token, jwtSecret) as AuthenticatedRequest["user"];
 
       if (!decoded || !allowedRoles.includes(decoded.role)) {
         return res.status(403).json({ message: "Forbidden: Access denied" });

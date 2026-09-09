@@ -28,7 +28,14 @@ export async function getDashboardOverview(restaurantId: string) {
   const activeOrders = await prisma.order.count({
     where: {
       restaurantId,
-      status: { in: [OrderStatus.PLACED, OrderStatus.ACCEPTED, OrderStatus.PREPARING, OrderStatus.READY] },
+      status: {
+        in: [
+          OrderStatus.PLACED,
+          OrderStatus.ACCEPTED,
+          OrderStatus.PREPARING,
+          OrderStatus.READY,
+        ],
+      },
     },
   });
 
@@ -70,19 +77,23 @@ export async function getTopSellingItems(restaurantId: string, limit = 5) {
     take: limit,
   });
 
-  // Hydrate menu item details
-  const itemDetails = await Promise.all(
-    items.map(async (item) => {
-      const menuItem = await prisma.menuItem.findUnique({
-        where: { id: item.menuItemId },
-        select: { id: true, name: true, price: true, category: true },
-      });
-      return {
-        ...menuItem,
-        totalSold: item._sum.quantity || 0,
-      };
-    })
-  );
+  if (items.length === 0) return [];
 
-  return itemDetails;
+  const itemIds = items.map((i) => i.menuItemId);
+
+  // Optimized single database query to fetch all required menu items
+  const menuItems = await prisma.menuItem.findMany({
+    where: { id: { in: itemIds }, restaurantId },
+    select: { id: true, name: true, price: true, category: true },
+  });
+
+  const menuItemMap = new Map(menuItems.map((m) => [m.id, m]));
+
+  return items.map((item) => {
+    const details = menuItemMap.get(item.menuItemId);
+    return {
+      ...details,
+      totalSold: item._sum.quantity || 0,
+    };
+  });
 }

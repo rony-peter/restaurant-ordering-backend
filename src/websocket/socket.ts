@@ -2,61 +2,58 @@ import { Server as HTTPServer } from "http";
 import { Server, Socket } from "socket.io";
 import jwt from "jsonwebtoken";
 
-let io: Server | null = null;
-
-interface TokenPayload {
-  userId: string;
-  restaurantId: string;
+export interface SocketUser {
+  id: string;
+  email: string;
   role: string;
+  restaurantId: string;
 }
+
+export interface AuthenticatedSocket extends Socket {
+  user?: SocketUser;
+}
+
+let io: Server | null = null;
 
 export function initSocket(server: HTTPServer): Server {
   io = new Server(server, {
     cors: {
-      origin: "*", // Adjust origins in production
+      origin: "*", // Adjust to match your frontend origin in production
       methods: ["GET", "POST"],
     },
   });
 
-  // Middleware: Authenticate socket connections using JWT query or auth token
-  io.use((socket: Socket, next) => {
-    const token =
-      (socket.handshake.auth?.token as string) ||
-      (socket.handshake.query?.token as string);
+  // JWT Authentication Middleware for Sockets
+  io.use((socket: AuthenticatedSocket, next) => {
+    const token = socket.handshake.auth?.token || socket.handshake.headers?.authorization?.split(" ")[1];
 
     if (!token) {
-      // Unauthenticated customer connections are permitted
-      return next();
+      return next(new Error("Authentication error: Token missing"));
     }
 
     try {
-      const secret = process.env.JWT_SECRET || "fallback_secret";
-      const decoded = jwt.verify(token, secret) as TokenPayload;
-      socket.data.user = decoded;
-
-      // Automatically join staff sockets to their restaurant room
-      if (decoded.restaurantId) {
-        socket.join(`restaurant_${decoded.restaurantId}`);
+      const jwtSecret = process.env.JWT_SECRET;
+      if (!jwtSecret) {
+        return next(new Error("Server misconfiguration: Missing JWT secret"));
       }
 
+      const decoded = jwt.verify(token, jwtSecret) as SocketUser;
+      socket.user = decoded;
       next();
     } catch (err) {
-      next(new Error("Authentication error"));
+      next(new Error("Authentication error: Invalid token"));
     }
   });
 
-  io.on("connection", (socket: Socket) => {
-    console.log(`Socket connected: ${socket.id}`);
+  io.on("connection", (socket: AuthenticatedSocket) => {
+    const restaurantId = socket.user?.restaurantId;
 
-    // Allow staff sockets to manually join kitchen channels if needed
-    socket.on("join:restaurant", (restaurantId: string) => {
-      socket.join(`restaurant_${restaurantId}`);
-    });
-
-    // Customer sockets join room for tracking a specific order
-    socket.on("joinOrderRoom", (orderId: string) => {
-      socket.join(`order_${orderId}`);
-    });
+    if (restaurantId) {
+      // Automatically join client to their restaurant's private room
+      const roomName = `restaurant_${restaurantId}`;
+      socket.join(roomName);
+      console.log(`Socket ${socket.id} (User: ${socket.user?.email}) joined room: ${roomName}`);
+    }
 
     socket.on("disconnect", () => {
       console.log(`Socket disconnected: ${socket.id}`);
@@ -66,9 +63,17 @@ export function initSocket(server: HTTPServer): Server {
   return io;
 }
 
+// Helper to access the Socket.IO instance anywhere in services/controllers
 export function getIO(): Server {
   if (!io) {
-    throw new Error("Socket.io is not initialized!");
+    throw new Error("Socket.io has not been initialized!");
   }
   return io;
+}
+
+// Helper function to emit events strictly to a specific restaurant room
+export function emitToRestaurant(restaurantId: string, event: string, payload: any) {
+  if (io) {
+    io.to(`restaurant_${restaurantId}`).emit(event, payload);
+  }
 }

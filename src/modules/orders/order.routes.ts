@@ -4,12 +4,16 @@ import {
   createOrderHandler,
   getOrdersHandler,
   updateOrderStatusHandler,
+  getReceiptHandler,
 } from "./order.controller.js";
 
 const router = Router();
 
 // Public route: Customer places order from QR mobile PWA
 router.post("/", createOrderHandler);
+
+// Public route: Customer fetches receipt for an order
+router.get("/:id/receipt", getReceiptHandler);
 
 // Protected Staff route: Fetch active orders for Web Portal (KDS/Manager/Admin)
 router.get(

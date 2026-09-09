@@ -1,13 +1,12 @@
-import { PrismaClient } from "@prisma/client";
+import { PrismaClient, StaffRole } from "@prisma/client";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
-import { RegisterRequestBody } from "./auth.types.js";
+import { RegisterStaffRequestBody, RegisterAdminRequestBody } from "./auth.types.js";
 
 const prisma = new PrismaClient();
 
 export async function hashPassword(password: string): Promise<string> {
-  const passwordHash = await bcrypt.hash(password, 10);
-  return passwordHash;
+  return bcrypt.hash(password, 10);
 }
 
 export async function comparePassword(
@@ -31,6 +30,11 @@ export async function loginStaff(email: string, passwordInput: string) {
     throw new Error("Invalid credentials");
   }
 
+  const jwtSecret = process.env.JWT_SECRET;
+  if (!jwtSecret) {
+    throw new Error("Server misconfiguration: Missing JWT secret");
+  }
+
   const token = jwt.sign(
     {
       id: staff.id,
@@ -38,7 +42,7 @@ export async function loginStaff(email: string, passwordInput: string) {
       role: staff.role,
       restaurantId: staff.restaurantId,
     },
-    process.env.JWT_SECRET || "fallback_secret",
+    jwtSecret,
     { expiresIn: "1d" }
   );
 
@@ -53,8 +57,52 @@ export async function loginStaff(email: string, passwordInput: string) {
   };
 }
 
-export async function registerStaff(body: RegisterRequestBody) {
-  const { email, password, role, restaurantId } = body;
+export async function registerAdmin(data: RegisterAdminRequestBody) {
+  const existing = await prisma.staff.findFirst({
+    where: { email: data.email },
+  });
+
+  if (existing) {
+    throw new Error("Staff email already exists");
+  }
+
+  const passwordHash = await hashPassword(data.password);
+
+  return prisma.$transaction(async (tx) => {
+    const restaurant = await tx.restaurant.create({
+      data: { name: data.restaurantName },
+    });
+
+    const staff = await tx.staff.create({
+      data: {
+        email: data.email,
+        passwordHash,
+        role: StaffRole.ADMIN,
+        restaurantId: restaurant.id,
+      },
+    });
+
+    return {
+      restaurant,
+      staff: {
+        id: staff.id,
+        email: staff.email,
+        role: staff.role,
+        restaurantId: staff.restaurantId,
+      },
+    };
+  });
+}
+
+export async function registerStaff(
+  adminRestaurantId: string,
+  body: RegisterStaffRequestBody
+) {
+  const { email, password, role } = body;
+
+  if (role === StaffRole.ADMIN) {
+    throw new Error("Cannot create ADMIN accounts via staff endpoint");
+  }
 
   const existing = await prisma.staff.findFirst({
     where: { email },
@@ -71,7 +119,7 @@ export async function registerStaff(body: RegisterRequestBody) {
       email,
       passwordHash,
       role,
-      restaurantId,
+      restaurantId: adminRestaurantId,
     },
   });
 

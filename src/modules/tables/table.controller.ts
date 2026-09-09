@@ -4,7 +4,7 @@ import {
   createTable,
   getRestaurantTables,
   getTableByQRToken,
-  deleteTable, // Import service method
+  deleteTable,
 } from "./table.service.js";
 
 export async function createTableHandler(
@@ -63,7 +63,6 @@ export async function getTableByQRHandler(
   }
 }
 
-// DELETE Handler
 export async function deleteTableHandler(
   req: AuthenticatedRequest,
   res: Response
