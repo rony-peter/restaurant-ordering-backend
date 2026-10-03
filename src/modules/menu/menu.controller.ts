@@ -1,97 +1,91 @@
 import { Request, Response } from "express";
-import { AuthenticatedRequest } from "../../middleware/auth.middleware.js";
-import {
-  createMenuItem,
-  getMenuItems,
-  toggleMenuItemAvailability,
-  deleteMenuItem,
-} from "./menu.service.js";
+import * as MenuService from "./menu.service";
 
-export async function createMenuItemHandler(
-  req: AuthenticatedRequest,
-  res: Response
-) {
+export async function getMenuItemsHandler(req: Request, res: Response) {
   try {
-    const restaurantId = req.user?.restaurantId;
-    const { name, price, category, description, imageUrl, dietaryTags } = req.body;
-
-    if (!restaurantId || !name || price === undefined || !category) {
-      return res.status(400).json({
-        message: "name, price, and category are required fields",
-      });
+    const restaurantId = (req as any).user?.restaurantId;
+    if (!restaurantId) {
+      return res.status(401).json({ message: "Unauthorized: Missing restaurant ID." });
     }
 
-    const menuItem = await createMenuItem(restaurantId, {
-      name,
+    const menuItems = await MenuService.getMenuItems(restaurantId);
+    return res.status(200).json(menuItems);
+  } catch (error: any) {
+    return res.status(500).json({ message: error.message || "Failed to fetch menu items." });
+  }
+}
+
+export async function getMenuItemsByRestaurantHandler(req: Request, res: Response) {
+  try {
+    const rawRestaurantId = req.params.restaurantId;
+    const restaurantId = Array.isArray(rawRestaurantId) ? rawRestaurantId[0] : rawRestaurantId;
+
+    if (!restaurantId) {
+      return res.status(400).json({ message: "Restaurant ID is required." });
+    }
+
+    const menuItems = await MenuService.getMenuItems(restaurantId);
+    return res.status(200).json(menuItems);
+  } catch (error: any) {
+    return res.status(500).json({ message: error.message || "Failed to fetch menu items." });
+  }
+}
+
+export async function createMenuItemHandler(req: Request, res: Response) {
+  try {
+    const restaurantId = (req as any).user?.restaurantId;
+    if (!restaurantId) {
+      return res.status(401).json({ message: "Unauthorized: Missing restaurant ID." });
+    }
+
+    const { name, price, category, description, imageUrl, dietaryTags } = req.body;
+
+    if (!name || price === undefined || !category) {
+      return res.status(400).json({ message: "Name, price, and category are required." });
+    }
+
+    const menuItem = await MenuService.createMenuItem(restaurantId, {
+      name: String(name).trim(),
       price: Number(price),
-      category,
-      description,
-      imageUrl,
-      dietaryTags,
+      category: String(category).trim(),
+      ...(description?.trim() ? { description: String(description).trim() } : {}),
+      ...(imageUrl?.trim() ? { imageUrl: String(imageUrl).trim() } : {}),
+      ...(Array.isArray(dietaryTags) ? { dietaryTags } : {}),
     });
 
     return res.status(201).json(menuItem);
   } catch (error: any) {
-    return res.status(500).json({ message: error.message });
-  }
-}
-
-export async function getMenuItemsHandler(
-  req: Request<{ restaurantId: string }>,
-  res: Response
-) {
-  try {
-    const { restaurantId } = req.params;
-    const category = req.query.category as string | undefined;
-
-    if (!restaurantId) {
-      return res.status(400).json({ message: "restaurantId is required" });
-    }
-
-    const items = await getMenuItems(restaurantId, category);
-    return res.status(200).json(items);
-  } catch (error: any) {
-    return res.status(500).json({ message: error.message });
-  }
-}
-
-export async function toggleAvailabilityHandler(
-  req: AuthenticatedRequest,
-  res: Response
-) {
-  try {
-    const restaurantId = req.user?.restaurantId;
-    const { id } = req.params as { id: string };
-    const { isAvailable } = req.body;
-
-    if (!restaurantId || !id || isAvailable === undefined) {
-      return res.status(400).json({
-        message: "Item ID and isAvailable status are required",
+    if (error.message?.startsWith("QUOTA_EXCEEDED")) {
+      return res.status(403).json({
+        message: error.message.replace("QUOTA_EXCEEDED: ", ""),
       });
     }
 
-    await toggleMenuItemAvailability(id, restaurantId, Boolean(isAvailable));
-    return res.status(200).json({ message: "Availability updated successfully" });
-  } catch (error: any) {
-    return res.status(500).json({ message: error.message });
+    return res.status(400).json({
+      message: error.message || "Failed to create menu item.",
+    });
   }
 }
 
-export async function deleteMenuItemHandler(
-  req: AuthenticatedRequest,
-  res: Response
-) {
+export async function deleteMenuItemHandler(req: Request, res: Response) {
   try {
-    const restaurantId = req.user?.restaurantId;
-    const { id } = req.params as { id: string };
-
-    if (!restaurantId || !id) {
-      return res.status(400).json({ message: "Item ID is required" });
+    const restaurantId = (req as any).user?.restaurantId;
+    if (!restaurantId) {
+      return res.status(401).json({ message: "Unauthorized: Missing restaurant ID." });
     }
 
-    await deleteMenuItem(id, restaurantId);
-    return res.status(200).json({ message: "Menu item deleted successfully" });
+    const rawId = req.params.id;
+    const id = Array.isArray(rawId) ? rawId[0] : rawId;
+
+    if (!id || typeof id !== "string") {
+      return res.status(400).json({ message: "Menu item ID is required." });
+    }
+
+    await MenuService.deleteMenuItem(restaurantId, id);
+    return res.status(200).json({ message: "Menu item deleted successfully." });
   } catch (error: any) {
-    return res.status(500).json({ message: error.message });
+    return res.status(400).json({
+      message: error.message || "Failed to delete menu item.",
+    });
   }
 }

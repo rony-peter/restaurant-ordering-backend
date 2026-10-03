@@ -1,113 +1,47 @@
 import { Request, Response } from "express";
-import { AuthenticatedRequest } from "../../middleware/auth.middleware.js";
-import {
-  loginStaff,
-  registerAdmin,
-  registerStaff,
-  getStaffList,
-  deleteStaff,
-} from "./auth.service.js";
-import {
-  LoginRequestBody,
-  RegisterAdminRequestBody,
-  RegisterStaffRequestBody,
-} from "./auth.types.js";
+import * as AuthService from "./auth.service.js";
 
-export async function loginHandler(
-  req: Request<{}, {}, LoginRequestBody>,
-  res: Response
-) {
+export async function registerAdminHandler(req: Request, res: Response) {
+  try {
+    const { restaurantName, address, phone, taxRate, currency, email, password } = req.body;
+
+    if (!restaurantName || !email || !password) {
+      return res.status(400).json({
+        message: "Restaurant name, email, and password are required.",
+      });
+    }
+
+    const authData = await AuthService.registerAdmin({
+      restaurantName: String(restaurantName).trim(),
+      ...(address ? { address: String(address).trim() } : {}),
+      ...(phone ? { phone: String(phone).trim() } : {}),
+      ...(taxRate !== undefined ? { taxRate: Number(taxRate) } : {}),
+      ...(currency ? { currency: String(currency).trim() } : {}),
+      email: String(email).trim(),
+      password: String(password),
+    });
+
+    return res.status(201).json(authData);
+  } catch (error: any) {
+    return res.status(400).json({ message: error.message || "Registration failed." });
+  }
+}
+
+export async function loginHandler(req: Request, res: Response) {
   try {
     const { email, password } = req.body;
 
     if (!email || !password) {
-      return res.status(400).json({ message: "Email and password are required" });
+      return res.status(400).json({ message: "Email and password are required." });
     }
 
-    const data = await loginStaff(email, password);
-    return res.status(200).json(data);
-  } catch (error: any) {
-    return res.status(401).json({ message: error.message || "Authentication failed" });
-  }
-}
-
-export async function registerAdminHandler(
-  req: Request<{}, {}, RegisterAdminRequestBody>,
-  res: Response
-) {
-  try {
-    const { restaurantName, email, password } = req.body;
-
-    if (!restaurantName || !email || !password) {
-      return res
-        .status(400)
-        .json({ message: "Restaurant name, email, and password are required" });
-    }
-
-    const result = await registerAdmin(req.body);
-    return res.status(201).json({
-      message: "Restaurant and staff accounts created successfully",
-      ...result,
+    const authData = await AuthService.loginUser({
+      email: String(email).trim(),
+      password: String(password),
     });
+
+    return res.json(authData);
   } catch (error: any) {
-    return res.status(400).json({ message: error.message || "Registration failed" });
-  }
-}
-
-export async function registerStaffHandler(
-  req: AuthenticatedRequest,
-  res: Response
-) {
-  try {
-    const adminRestaurantId = req.user?.restaurantId;
-    const { email, password, role } = req.body as RegisterStaffRequestBody;
-
-    if (!adminRestaurantId) {
-      return res.status(403).json({ message: "Forbidden: No restaurant assigned" });
-    }
-
-    if (!email || !password || !role) {
-      return res.status(400).json({ message: "Email, password, and role are required" });
-    }
-
-    const staff = await registerStaff(adminRestaurantId, { email, password, role });
-    return res.status(201).json(staff);
-  } catch (error: any) {
-    return res.status(400).json({ message: error.message || "Staff creation failed" });
-  }
-}
-
-export async function getStaffHandler(req: AuthenticatedRequest, res: Response) {
-  try {
-    const restaurantId = req.user?.restaurantId;
-
-    if (!restaurantId) {
-      return res.status(403).json({ message: "Forbidden: No restaurant assigned" });
-    }
-
-    const staffList = await getStaffList(restaurantId);
-    return res.status(200).json(staffList);
-  } catch (error: any) {
-    return res.status(500).json({ message: error.message || "Failed to fetch staff" });
-  }
-}
-
-export async function deleteStaffHandler(req: AuthenticatedRequest, res: Response) {
-  try {
-    const restaurantId = req.user?.restaurantId;
-    const { id } = req.params;
-
-    if (!restaurantId) {
-      return res.status(403).json({ message: "Forbidden: No restaurant assigned" });
-    }
-
-    if (!id || typeof id !== "string") {
-      return res.status(400).json({ message: "Invalid or missing staff ID parameter" });
-    }
-
-    await deleteStaff(id, restaurantId);
-    return res.status(200).json({ message: "Staff member deleted successfully" });
-  } catch (error: any) {
-    return res.status(400).json({ message: error.message || "Failed to delete staff" });
+    return res.status(401).json({ message: error.message || "Authentication failed." });
   }
 }

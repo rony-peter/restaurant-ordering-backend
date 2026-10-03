@@ -42,20 +42,84 @@ enum StaffRole {
   ADMIN
 }
 
-model Restaurant {
-  id       String    @id @default(uuid())
-  name     String
-  settings Json?     // e.g., { "address": "123 Main St", "taxRate": 0.05, "currency": "INR", "phone": "+91..." }
+enum SubscriptionTier {
+  FREE
+  BASIC
+  PRO
+  ENTERPRISE
+}
 
-  tables    Table[]
-  menuItems MenuItem[]
-  orders    Order[]
-  staff     Staff[]
+enum SubscriptionStatus {
+  PENDING
+  ACTIVE
+  HALTED
+  PAUSED
+  CANCELLED
+  EXPIRED
+}
+
+enum InvoiceStatus {
+  PENDING
+  PAID
+  FAILED
+}
+
+model Restaurant {
+  id       String @id @default(uuid())
+  name     String
+  settings Json? // e.g., { "address": "123 Main St", "taxRate": 0.05, "currency": "INR", "phone": "+91..." }
+
+  tables       Table[]
+  menuItems    MenuItem[]
+  orders       Order[]
+  staff        Staff[]
+  subscription Subscription?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   @@map("restaurants")
+}
+
+model Subscription {
+  id                     String             @id @default(uuid())
+  restaurantId           String             @unique
+  tier                   SubscriptionTier   @default(FREE)
+  status                 SubscriptionStatus @default(ACTIVE)
+  razorpayCustomerId     String?            @unique
+  razorpaySubscriptionId String?            @unique
+  razorpayPlanId         String?
+  currentPeriodStart     DateTime?
+  currentPeriodEnd       DateTime?
+  cancelAtPeriodEnd      Boolean            @default(false)
+
+  restaurant Restaurant          @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+  invoices   SubscriptionInvoice[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([restaurantId])
+  @@index([status])
+  @@map("subscriptions")
+}
+
+model SubscriptionInvoice {
+  id                String        @id @default(uuid())
+  subscriptionId    String
+  razorpayInvoiceId String?       @unique
+  razorpayPaymentId String?
+  amount            Decimal       @db.Decimal(10, 2)
+  currency          String        @default("INR")
+  status            InvoiceStatus @default(PENDING)
+  paidAt            DateTime?
+
+  subscription Subscription @relation(fields: [subscriptionId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  @@index([subscriptionId])
+  @@map("subscription_invoices")
 }
 
 model Table {
@@ -87,7 +151,7 @@ model MenuItem {
   isAvailable  Boolean  @default(true)
   dietaryTags  String[]
 
-  restaurant Restaurant @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+  restaurant Restaurant  @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
   orderItems OrderItem[]
 
   createdAt DateTime @default(now())
@@ -137,12 +201,15 @@ model OrderItem {
 }
 
 model Payment {
-  id         String        @id @default(uuid())
-  orderId    String
-  amount     Decimal       @db.Decimal(10, 2)
-  method     PaymentMethod @default(PAY_AT_TABLE)
-  status     PaymentStatus @default(PENDING)
-  gatewayRef String?
+  id                String        @id @default(uuid())
+  orderId           String
+  amount            Decimal       @db.Decimal(10, 2)
+  method            PaymentMethod @default(PAY_AT_TABLE)
+  status            PaymentStatus @default(PENDING)
+  gatewayRef        String?
+  razorpayOrderId   String?
+  razorpayPaymentId String?
+  razorpaySignature String?
 
   order Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
 
@@ -157,7 +224,7 @@ model Payment {
 model Staff {
   id           String    @id @default(uuid())
   restaurantId String
-  email        String    @unique // Changed from plain String to @unique
+  email        String    @unique
   passwordHash String
   role         StaffRole
 
@@ -166,7 +233,6 @@ model Staff {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  // Removed @@unique([restaurantId, email]) in favor of global @unique email
   @@index([restaurantId])
   @@map("staff")
 }

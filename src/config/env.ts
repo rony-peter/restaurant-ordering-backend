@@ -21,5 +21,13 @@ export const env = {
 
   JWT_SECRET: getRequiredEnv("JWT_SECRET"),
 
-  CLIENT_URL: process.env.CLIENT_URL ?? "http://localhost:3000"
+  CLIENT_URL: process.env.CLIENT_URL ?? "http://localhost:3000",
+
+  RAZORPAY_KEY_ID: process.env.RAZORPAY_KEY_ID ?? "",
+  RAZORPAY_KEY_SECRET: process.env.RAZORPAY_KEY_SECRET ?? "",
+  RAZORPAY_WEBHOOK_SECRET: process.env.RAZORPAY_WEBHOOK_SECRET ?? "",
+
+  RAZORPAY_PLAN_BASIC: process.env.RAZORPAY_PLAN_BASIC ?? "plan_basic_default",
+  RAZORPAY_PLAN_PRO: process.env.RAZORPAY_PLAN_PRO ?? "plan_pro_default",
+  RAZORPAY_PLAN_ENTERPRISE: process.env.RAZORPAY_PLAN_ENTERPRISE ?? "plan_ent_default",
 };

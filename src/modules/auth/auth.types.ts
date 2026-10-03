@@ -1,35 +1,27 @@
-import { StaffRole } from "@prisma/client";
+import { StaffRole, SubscriptionTier } from "@prisma/client";
 
-export interface LoginRequestBody {
-  email: string;
-  password: string;
-}
-
-export interface AuthUserPayload {
-  id: string;
-  email: string;
-  role: StaffRole;
-  restaurantId: string;
-}
-
-export interface InitialStaffInput {
-  email: string;
-  password: string;
-  role: StaffRole;
-}
-
-export interface RegisterAdminRequestBody {
+export interface RegisterAdminDto {
   restaurantName: string;
-  address?: string;
-  phone?: string;
-  taxRate?: number;
+  address?: string | undefined;
+  phone?: string | undefined;
+  taxRate?: number | undefined;
+  currency?: string | undefined;
   email: string;
   password: string;
-  initialStaff?: InitialStaffInput[];
 }
 
-export interface RegisterStaffRequestBody {
+export interface LoginInput {
   email: string;
   password: string;
-  role: StaffRole;
+}
+
+export interface AuthResponse {
+  token: string;
+  user: {
+    id: string;
+    email: string;
+    role: StaffRole;
+    restaurantId: string;
+  };
+  subscriptionTier: SubscriptionTier;
 }
